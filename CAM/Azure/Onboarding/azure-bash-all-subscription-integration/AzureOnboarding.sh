@@ -1,9 +1,16 @@
 #!/bin/bash
 
-api_key=${API_KEY}
-v1_account_id=${V1_ACCOUNT_ID}
+if [[ -z "$API_KEY" || -z "$V1_ACCOUNT_ID" ]]; then
+  echo "Error: Las variables de entorno API_KEY y V1_ACCOUNT_ID deben estar definidas."
+  exit 1
+fi
+
+api_key="${API_KEY}"
+v1_account_id="${V1_ACCOUNT_ID}"
 vision_one_api_url="https://api.xdr.trendmicro.com/beta/cam/azureSubscriptions"
-workload_instance_id=${WORKLOAD_INSTANCE_ID}
+workload_instance_id="${WORKLOAD_INSTANCE_ID}"
+issuer="https://cloudaccounts-us.xdr.trendmicro.com"
+subject="urn:visionone:identity:us:$v1_account_id:account/$v1_account_id"
 
 all_results=()
 
@@ -68,6 +75,7 @@ process_subscription() {
     az account set --subscription "$subscription_id" > /dev/null 2>&1
 
     app_id=$(az ad app list --filter "displayName eq '$app_registration_name'" --query "[0].appId" -o tsv 2>/dev/null)
+    echo "$app_id"
     if [ -z "$app_id" ]; then
         app_id=$(az ad app create --display-name "$app_registration_name" --required-resource-accesses "$required_resource_accesses" --query "appId" -o tsv 2>/dev/null)
         echo "App Registration Created: $subscription_name" | tee -a $log_file
@@ -77,7 +85,6 @@ process_subscription() {
 
     federated_cred_exists=$(az ad app federated-credential list --id "$app_id" --query "[?name=='$federated_cred_name'].name" -o tsv 2>/dev/null)
     if [ -z "$federated_cred_exists" ]; then
-        subject="urn:visionone:identity:us:$v1_account_id:account/$v1_account_id"
         az ad app federated-credential create --id "$app_id" --parameters "{\"name\": \"$federated_cred_name\", \"issuer\": \"$issuer\", \"subject\": \"$subject\", \"description\": \"Federated Credentials created by Trend Micro Vision One, used for Accessing Azure Resources\", \"audiences\": [\"api://AzureADTokenExchange\"]}" > /dev/null 2>&1
         echo "Federated Credentials Created: $subscription_name" | tee -a $log_file
     else
@@ -148,6 +155,7 @@ EOF
 EOF
 )
 
+    echo "$json_body"
     response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Authorization: Bearer $api_key" \
         -H "Content-Type: application/json" \
