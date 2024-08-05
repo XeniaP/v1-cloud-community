@@ -155,7 +155,6 @@ EOF
 EOF
 )
 
-    echo "$json_body"
     response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Authorization: Bearer $api_key" \
         -H "Content-Type: application/json" \
