@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export VI_API_KEY="<v1-api-key>"
+export V1_API_KEY="<v1-api-key>"
 export V1_ACCOUNT_ID="<v1-account-id>"
 export TREND_MICRO_API_URL="https://api.xdr.trendmicro.com/beta/cam/gcpProjects/generateTerraformTemplate"
 
@@ -77,7 +77,7 @@ process_project() {
     touch "$log_file"
     touch "$error_log_file"
 
-    api_key="${VI_API_KEY}"
+    api_key="${V1_API_KEY}"
     v1_account_id="${V1_ACCOUNT_ID}"
 
     trend_micro_api_url="${TREND_MICRO_API_URL}"
