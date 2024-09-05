@@ -134,6 +134,8 @@ EOF
         echo "Fail" | tee -a "$log_file"
         echo "Error: $response_body" >> "$error_log_file"
     fi
+    
+    rm -rf $project_id
 }
 
 export -f process_project # Exportar la función para que esté disponible para xargs
