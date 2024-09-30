@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Variables globales para almacenar el Application ID y Principal ID
+global_app_id=""
+global_principal_id=""
+
 if [[ -z "$API_KEY" || -z "$V1_ACCOUNT_ID" ]]; then
   echo "Error: Las variables de entorno API_KEY y V1_ACCOUNT_ID deben estar definidas."
   exit 1
@@ -23,12 +27,12 @@ if [[ -n "$workload_instance_id" ]]; then
     }
   ]
 EOF
-  )
+)
 else
   connected_security_services=$(cat <<EOF
   "connectedSecurityServices": [{}]
 EOF
-  )
+)
 fi
 
 required_resource_accesses='[
@@ -52,14 +56,8 @@ required_resource_accesses='[
     }
 ]'
 
-mutex=$(mktemp -u)
-exec 3>$mutex
-
 log_file="execution_log.txt"
 echo "Log de ejecución - $(date)" > $log_file
-
-processed_count=0
-total_subscriptions=0
 
 process_subscription() {
     subscription_id=$1
@@ -70,25 +68,46 @@ process_subscription() {
     role_name="v1-custom-role-${subscription_id}"
     role_definition_file="custom_role_definition.json"
 
-    progress=()
-
     az account set --subscription "$subscription_id" > /dev/null 2>&1
 
-    app_id=$(az ad app list --filter "displayName eq '$app_registration_name'" --query "[0].appId" -o tsv 2>/dev/null)
-    echo "$app_id"
-    if [ -z "$app_id" ]; then
-        app_id=$(az ad app create --display-name "$app_registration_name" --required-resource-accesses "$required_resource_accesses" --query "appId" -o tsv 2>/dev/null)
-        echo "App Registration Created: $subscription_name" | tee -a $log_file
+    # Reutilizar Application ID y Principal ID si ya existen
+    if [[ -z "$global_app_id" ]]; then
+        app_id=$(az ad app list --filter "displayName eq '$app_registration_name'" --query "[0].appId" -o tsv 2>/dev/null)
+        if [ -z "$app_id" ]; then
+            app_id=$(az ad app create --display-name "$app_registration_name" --required-resource-accesses "$required_resource_accesses" --query "appId" -o tsv 2>/dev/null)
+            echo "App Registration Created: $subscription_name" | tee -a $log_file
+            global_app_id="$app_id"  # Almacenar el App ID para las siguientes suscripciones
+        else
+            echo "App Registration Already Exist: $subscription_name" | tee -a $log_file
+            global_app_id="$app_id"  # Usar el App ID existente
+        fi
+        federated_cred_exists=$(az ad app federated-credential list --id "$app_id" --query "[?name=='$federated_cred_name'].name" -o tsv 2>/dev/null)
+        if [ -z "$federated_cred_exists" ]; then
+            az ad app federated-credential create --id "$app_id" --parameters "{\"name\": \"$federated_cred_name\", \"issuer\": \"$issuer\", \"subject\": \"$subject\", \"description\": \"Federated Credentials created by Trend Micro Vision One, used for Accessing Azure Resources\", \"audiences\": [\"api://AzureADTokenExchange\"]}" > /dev/null 2>&1
+            echo "Federated Credentials Created: $subscription_name" | tee -a $log_file
+        else
+            echo "Federated Credentials Already Exist: $subscription_name" | tee -a $log_file
+        fi
     else
-        echo "App Registration Already Exist: $subscription_name" | tee -a $log_file
+        app_id="$global_app_id"
+        echo "Reutilizando App ID para $subscription_name - $app_id" | tee -a $log_file
     fi
 
-    federated_cred_exists=$(az ad app federated-credential list --id "$app_id" --query "[?name=='$federated_cred_name'].name" -o tsv 2>/dev/null)
-    if [ -z "$federated_cred_exists" ]; then
-        az ad app federated-credential create --id "$app_id" --parameters "{\"name\": \"$federated_cred_name\", \"issuer\": \"$issuer\", \"subject\": \"$subject\", \"description\": \"Federated Credentials created by Trend Micro Vision One, used for Accessing Azure Resources\", \"audiences\": [\"api://AzureADTokenExchange\"]}" > /dev/null 2>&1
-        echo "Federated Credentials Created: $subscription_name" | tee -a $log_file
+    # Reutilizar Principal ID si ya existe
+    if [[ -z "$global_principal_id" ]]; then
+        principal_id=$(az ad sp list --filter "appId eq '$app_id'" --query "[0].id" -o tsv 2>/dev/null)
+        if [ -z "$principal_id" ]; then
+            az ad sp create --id "$app_id" > /dev/null 2>&1
+            principal_id=$(az ad sp show --id "$app_id" --query id --out tsv 2>/dev/null)
+            echo "Principal ID Created: $subscription_name" | tee -a $log_file
+            global_principal_id="$principal_id"  # Almacenar el Principal ID para las siguientes suscripciones
+        else
+            echo "Principal ID Already Exist: $subscription_name" | tee -a $log_file
+            global_principal_id="$principal_id"  # Usar el Principal ID existente
+        fi
     else
-        echo "Federated Credentials Already Exist: $subscription_name" | tee -a $log_file
+        principal_id="$global_principal_id"
+        echo "Reutilizando Principal ID para $subscription_name $principal_id" | tee -a $log_file
     fi
 
     role_definition=$(cat <<EOF
@@ -123,17 +142,9 @@ EOF
     fi
     rm -f "$role_definition_file"
 
-    principal_id=$(az ad sp list --filter "appId eq '$app_id'" --query "[0].id" -o tsv 2>/dev/null)
-    if [ -z "$principal_id" ]; then
-        az ad sp create --id $app_id > /dev/null 2>&1
-        principal_id=$(az ad sp show --id $app_id --query id --out tsv 2>/dev/null)
-        echo "Principal ID Created: $subscription_name" | tee -a $log_file
-    else
-        echo "Principal ID Already Exist: $subscription_name" | tee -a $log_file
-    fi
-    role_assignment_exists=$(az role assignment list --assignee $principal_id --role $role_name --query "[?principalId=='$principal_id' && roleDefinitionName=='$role_name']" -o tsv 2>/dev/null)
+    role_assignment_exists=$(az role assignment list --assignee "$principal_id" --role "$role_name" --query "[?principalId=='$principal_id' && roleDefinitionName=='$role_name']" -o tsv 2>/dev/null)
     if [ -z "$role_assignment_exists" ]; then
-        az role assignment create --assignee $principal_id --role "$role_name" --scope "/subscriptions/$subscription_id" > /dev/null 2>&1
+        az role assignment create --assignee "$principal_id" --role "$role_name" --scope "/subscriptions/$subscription_id" > /dev/null 2>&1
         echo "Role Assignment Created: $subscription_name" | tee -a $log_file
     else
         echo "Role Assignment Already Exist: $subscription_name" | tee -a $log_file
@@ -143,6 +154,7 @@ EOF
     http_endpoint="https://api.xdr.trendmicro.com/beta/cam"
     add_account_url="$http_endpoint/azureSubscriptions"
 
+    echo "$subscription_id, $app_id, $tenant_id, $subscription_name, $v1_account_id, $connected_security_services"
     json_body=$(cat <<EOF
 {
     "subscriptionId": "$subscription_id",
@@ -179,7 +191,6 @@ EOF
 }
 
 subscriptions=$(az account list --query "[].{id:id, name:name}" -o tsv | awk '{print $1 "," $2}')
-total_subscriptions=$(echo "$subscriptions" | wc -l)
 
 while IFS=',' read -r subscription_id subscription_name; do
     {
