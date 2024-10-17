@@ -30,7 +30,12 @@ This repository contains a Bash script to integrate All GCP projects with Trend 
     gcloud auth login
     ```
 
-6. Add the API_KEY and V1_ACCOUNT_ID values in Script:
+6. Configure the API_KEY and V1_ACCOUNT_ID values like Environment Variables:
+
+    ```
+    export API_KEY="<API_KEY>"
+    export V1_ACCOUNT_ID="<V1_ACCOUNT_ID>"
+    ```
 7. Give execute permission to the script:
     ```sh
     chmod +x GCPOnboarding.sh
@@ -40,5 +45,11 @@ This repository contains a Bash script to integrate All GCP projects with Trend 
     ./GCPOnboarding.sh
     ```
 9. wait for the script to complete the execution.
+10. Verify the accounts in Vision One
+11. Clean the Environment Variables
+    ```
+    export API_KEY=""
+    export V1_ACCOUNT_ID=""
+    ```
 
 ## Created By XeniaP - Trend Micro

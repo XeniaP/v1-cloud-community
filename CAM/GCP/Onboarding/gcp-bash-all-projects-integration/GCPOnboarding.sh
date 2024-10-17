@@ -1,158 +1,197 @@
 #!/bin/bash
 
-export V1_API_KEY="<v1-api-key>"
-export V1_ACCOUNT_ID="<v1-account-id>"
-export TREND_MICRO_API_URL="https://api.xdr.trendmicro.com/beta/cam/gcpProjects/generateTerraformTemplate"
+if [[ -z "$API_KEY" || -z "$V1_ACCOUNT_ID" ]]; then
+  echo "Error: Las variables de entorno API_KEY y V1_ACCOUNT_ID deben estar definidas."
+  exit 1
+fi
 
-verify_and_add_to_vision_one() {
-    project_id="$1"
-    api_key="$2"
-    v1_account_id="$3"
-    trend_micro_api_url="$4"
-    log_file="$5"
-    error_log_file="$6"
+VISION_ONE_ENDPOINT="https://cloudaccounts-us.xdr.trendmicro.com/beta/cam/gcpProjects"
+api_key="${API_KEY}"
+v1_account_id="${V1_ACCOUNT_ID}"
+workload_instance_id="${WORKLOAD_INSTANCE_ID}"
 
-    # Check if project is registered in Vision One
-    response=$(curl -s -w "\n%{http_code}" -X GET \
-        -H "Authorization: Bearer $api_key" \
-        -H "Content-Type: application/json" \
-        -H "x-user-role: Master Administrator" \
-        -H "x-customer-id: $v1_account_id" \
-        "$trend_micro_api_url/gcpProjects/$project_id")
+PROJECTS=($(gcloud projects list --filter="lifecycleState=ACTIVE" --format="value(projectId)"))
 
-    if [[ $(echo "$response" | tail -n1) != "200" ]]; then
-        echo "Project $project_id not found in Vision One. Integrating..." | tee -a "$log_file"
-        # Call integration endpoint if needed
-        workloadIdentityPoolId=$(gcloud iam workload-identity-pools list --location="global" --filter="name:projects/$project_id" --format="value(name)")
-        oidcProviderId=$(gcloud iam workload-identity-pools providers list --location="global" --workload-identity-pool="$workloadIdentityPoolId" --format="value(name)")
-        serviceAccountId=$(gcloud iam service-accounts list --filter="email:vision-one-service-account@$project_id.iam.gserviceaccount.com" --format="value(uniqueId)")
-        projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+process_project() {
+  project_info="$1"
+  project_id=$(echo "$project_info" | cut -d',' -f1)
+  project_name=$(echo "$project_info" | cut -d',' -f2)
+  projectNumber=$(gcloud projects describe $project_id --format="value(projectNumber)")
+  if [[ $(project_integrated "$project_id" "$2" "$3") == 1 ]]; then
+    return
+  fi
+  gcloud config set project $project_id
+  enable_apis $project_id
+  check_workload_pool "$project_id" "$2" "$3" "$4"
+}
 
-        integration_response=$(curl -s -w "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer $api_key" \
-            -H "Content-Type: application/json" \
-            -H "x-user-role: Master Administrator" \
-            -H "x-customer-id: $v1_account_id" \
-            -d '{
-                "workloadIdentityPoolId": "'$workloadIdentityPoolId'",
-                "oidcProviderId": "'$oidcProviderId'",
-                "serviceAccountId": "'$serviceAccountId'",
-                "projectNumber": "'$projectNumber'",
-                "name": "'$project_name'",
-                "description": ""
-            }' \
-            "$trend_micro_api_url")
+check_workload_pool(){
+    PROJECT_ID=$1
+    POOL_BASE_NAME="v1-workload-identity-pool"
+    v1_account_id="$2"
+    api_key="$3"
+    VISION_ONE_ENDPOINT="$4"
+    LOCATION="global"
+    EXISTING_POOL=$(gcloud iam workload-identity-pools list \
+        --location=$LOCATION \
+        --project=$PROJECT_ID \
+        --format="value(name)" | grep "$POOL_BASE_NAME")
 
-        integration_status_code=$(echo "$integration_response" | tail -n1)
-        integration_response_body=$(echo "$integration_response" | sed '$d')
-
-        if [[ "$integration_status_code" == "200" ]]; then
-            echo "Integration successful for project $project_name ($project_id)." | tee -a "$log_file"
-        else
-            echo "Integration failed for project $project_name ($project_id): $integration_response_body" | tee -a "$error_log_file"
-        fi
+    if [[ -n "$EXISTING_POOL" ]]; then
+        echo "Existing Workload Identity Pool founded: $EXISTING_POOL"
+        EXISTING_SUFFIX=$(echo "$EXISTING_POOL" | grep -oP "${POOL_BASE_NAME}-\K[[:alnum:]]+$")
+        sa_binding $PROJECT_ID $EXISTING_SUFFIX $v1_account_id
+        integrate_project $PROJECT_ID "v1-workload-identity-pool-$EXISTING_SUFFIX" $v1_account_id $api_key $VISION_ONE_ENDPOINT
+        return 1
     else
-        echo "Project $project_id already exists in Vision One." | tee -a "$log_file"
+        SUFFIX=$(cat /dev/urandom | tr -dc 'a-z' | fold -w 4 | head -n 1)
+        create_role $PROJECT_ID $SUFFIX
+        create_service_account $PROJECT_ID
+        create_workload_pool $PROJECT_ID $SUFFIX
+        create_oidc $PROJECT_ID $SUFFIX
+        sa_binding $PROJECT_ID $SUFFIX $v1_account_id
+        integrate_project $PROJECT_ID $workload_pool_id $v1_account_id $api_key $VISION_ONE_ENDPOINT
     fi
 }
 
-export -f verify_and_add_to_vision_one
+enable_apis(){
+    gcloud config set project $1
+    gcloud services enable iamcredentials.googleapis.com --project=$1
+    gcloud services enable cloudresourcemanager.googleapis.com --project=$1
+    gcloud services enable iam.googleapis.com --project=$1
+    gcloud services enable cloudbuild.googleapis.com --project=$1
+    gcloud services enable deploymentmanager.googleapis.com --project=$1
+    gcloud services enable cloudfunctions.googleapis.com --project=$1
+    gcloud services enable pubsub.googleapis.com --project=$1
+    gcloud services enable secretmanager.googleapis.com --project=$1
+}
 
-process_project() {
-    project_info="$1"
-    action="$2"
-    script_dir="$3"
-    log_file="$script_dir/execution_log.txt"
-    error_log_file="$script_dir/error_log.txt"
+create_role(){
+    gcloud config set project $1
+    gcloud iam roles create "vision_one_cam_role_$2" \
+        --project $1 \
+        --title "Vision One CAM Features role" \
+        --description "The custom role for Vision One" \
+        --permissions="iam.serviceAccounts.getAccessToken,iam.roles.get,iam.roles.list,resourcemanager.tagKeys.get,resourcemanager.tagKeys.list,resourcemanager.tagValues.get,resourcemanager.tagValues.list,iam.serviceAccountKeys.create,iam.serviceAccountKeys.delete,accessapproval.settings.get,alloydb.clusters.list,alloydb.instances.list,apigateway.apiconfigs.getIamPolicy,apigateway.apiconfigs.list,apigateway.apis.get,apigateway.apis.getIamPolicy,apigateway.apis.list,apigateway.gateways.getIamPolicy,apigateway.gateways.list,apigateway.locations.get,apigee.apiproducts.list,apigee.deployments.list,apigee.envgroupattachments.list,apigee.envgroups.list,apigee.environments.getStats,apigee.instanceattachments.list,apigee.instances.list,apigee.proxies.list,apigee.proxyrevisions.get,apikeys.keys.list,artifactregistry.repositories.getIamPolicy,artifactregistry.repositories.list,bigquery.datasets.get,bigquery.tables.get,bigquery.tables.getIamPolicy,bigquery.tables.list,bigtable.clusters.list,bigtable.instances.getIamPolicy,bigtable.instances.list,certificatemanager.certs.list,cloudfunctions.functions.getIamPolicy,cloudfunctions.functions.list,cloudkms.cryptoKeys.getIamPolicy,cloudkms.cryptoKeys.list,cloudkms.keyRings.list,cloudkms.locations.list,cloudsql.instances.list,cloudsql.instances.listServerCas,compute.backendServices.getIamPolicy,compute.backendServices.list,compute.disks.getIamPolicy,compute.disks.list,compute.firewalls.list,compute.globalForwardingRules.list,compute.images.getIamPolicy,compute.images.list,compute.instanceGroups.list,compute.instances.getIamPolicy,compute.instances.list,compute.machineImages.getIamPolicy,compute.machineImages.list,compute.networks.list,compute.projects.get,compute.regionBackendServices.getIamPolicy,compute.regionBackendServices.list,compute.routers.list,compute.sslPolicies.list,compute.subnetworks.getIamPolicy,compute.subnetworks.list,compute.targetHttpsProxies.list,compute.targetSslProxies.list,compute.targetVpnGateways.list,compute.urlMaps.list,compute.vpnGateways.list,compute.zones.list,container.clusters.list,dataproc.clusters.getIamPolicy,dataproc.clusters.list,datastore.databases.list,dns.managedZones.list,dns.policies.list,file.instances.list,iam.roles.list,iam.serviceAccountKeys.list,iam.serviceAccounts.get,iam.serviceAccounts.getIamPolicy,iam.serviceAccounts.list,logging.logEntries.list,logging.logMetrics.list,logging.sinks.list,memcache.instances.list,monitoring.alertPolicies.list,networkconnectivity.hubs.list,networkconnectivity.hubs.listSpokes,notebooks.instances.getIamPolicy,notebooks.instances.list,orgpolicy.policy.get,pubsub.topics.get,pubsub.topics.getIamPolicy,pubsub.topics.list,pubsublite.topics.list,pubsublite.topics.listSubscriptions,redis.clusters.list,redis.instances.list,resourcemanager.projects.get,resourcemanager.projects.getIamPolicy,servicemanagement.services.get,serviceusage.services.list,spanner.instances.getIamPolicy,spanner.instances.list,storage.buckets.getIamPolicy,storage.buckets.list" > /dev/null
+}
 
-    if [ -z "$log_file" ]; then
-        echo "Error: log_file variable is not set." >&2
-        exit 1
+create_service_account(){
+    project_id=$1
+    serviceAccount="vision-one-service-account@$project_id.iam.gserviceaccount.com"
+    if gcloud iam service-accounts list --project=$project_id --format="value(email)" | grep -q "$serviceAccount"; then
+        echo "Service Account $serviceAccount already Exists"
+    else
+        gcloud iam service-accounts create vision-one-service-account \
+            --display-name="The Service Account Trend Micro Vision One will impersonate" \
+            --project=$project_id
     fi
-    if [ -z "$error_log_file" ]; then
-        echo "Error: error_log_file variable is not set." >&2
-        exit 1
-    fi
-    # Crear los archivos de log si no existen
-    touch "$log_file"
-    touch "$error_log_file"
+}
 
-    api_key="${V1_API_KEY}"
-    v1_account_id="${V1_ACCOUNT_ID}"
+create_workload_pool(){
+    project_id="$1"
+    workload_pool_id="v1-workload-identity-pool-$2"
+    gcloud iam workload-identity-pools create "$workload_pool_id" --display-name "V1 Workload Identity Pool" --description "The Workload Identity Pool containing Trend Micro Vision One OIDC configuration" --project $project_id --location="global"
+}
 
-    trend_micro_api_url="${TREND_MICRO_API_URL}"
-    project_id=$(echo "$project_info" | cut -d',' -f1)
-    project_name=$(echo "$project_info" | cut -d',' -f2)
+create_oidc(){
+    project_id="$1"
+    issuer="https://cloudaccounts-us.xdr.trendmicro.com"
+    workload_pool_id="v1-workload-identity-pool-$2"
+    gcloud config set project $project_id
+    projectNumber=$(gcloud projects describe $project_id --format="value(projectNumber)")
+    gcloud iam workload-identity-pools providers create-oidc vision-one-oidc-provider \
+        --workload-identity-pool="$workload_pool_id" \
+        --location="global" \
+        --display-name="Vision One OIDC Provider" \
+        --description="The Vision One OIDC provider" \
+        --issuer-uri=$issuer \
+        --allowed-audiences="//iam.googleapis.com/projects/$projectNumber/locations/global/workloadIdentityPools/$workload_pool_id/providers/vision-one-oidc-provider" \
+        --attribute-mapping="google.subject=assertion.sub" \
+        --project=$project_id
+}
 
-    echo "Log de ejecución - $(date)" >> "$log_file"
+sa_binding(){
+    project_id="$1"
+    suffix="$2"
+    subject="urn:visionone:identity:us:$3:account/$3"
+    serviceAccount="vision-one-service-account@$project_id.iam.gserviceaccount.com"
+    project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
+    gcloud config set project $project_id
+    gcloud iam service-accounts add-iam-policy-binding "$serviceAccount" \
+        --role="roles/iam.workloadIdentityUser" \
+        --member="principal://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/v1-workload-identity-pool-$suffix/subject/$subject" \
+        --project $project_id > /dev/null
+    gcloud projects add-iam-policy-binding $project_id \
+        --member="serviceAccount:$serviceAccount" \
+        --role="roles/viewer" > /dev/null
+    gcloud projects add-iam-policy-binding $project_id \
+        --member="serviceAccount:$serviceAccount" \
+        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" > /dev/null
+}
 
-    if [ -z "$log_file" ]; then
-        echo "Error: log_file variable is not set." >&2
-        exit 1
-    fi
-
-    gcloud config set project $project_id 2>>"$error_log_file"
-
-    echo "Processing project: $project_id ($project_name)" | tee -a "$log_file"
-
+integrate_project(){
+    http_endpoint="https://api.xdr.trendmicro.com/beta/cam"
+    add_account_url="$http_endpoint/gcpProjects"
+    project_id=$1
+    workload_pool_id="$2"
+    service_account_id=$(gcloud iam service-accounts describe vision-one-service-account@$project_id.iam.gserviceaccount.com --format="value(uniqueId)")
+    project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
+    v1_account_id=$3
+    api_key=$4
     json_body=$(cat <<EOF
 {
-    "gcpProjectName": "$project_name"
+  "name": "$project_id",
+  "projectNumber": "$project_number", 
+  "serviceAccountId": "$service_account_id",
+  "workloadIdentityPoolId": "$workload_pool_id",
+  "oidcProviderId": "vision-one-oidc-provider"
 }
 EOF
 )
-
     response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Authorization: Bearer $api_key" \
         -H "Content-Type: application/json" \
         -H "x-user-role: Master Administrator" \
         -H "x-customer-id: $v1_account_id" \
         -d "$json_body" \
-        "$trend_micro_api_url" 2>>"$error_log_file")
+        "$add_account_url")
 
     status_code=$(echo "$response" | tail -n1)
     response_body=$(echo "$response" | sed '$d')
-    gcloud iam service-accounts list --filter="email:vision-one-service-account@"$project_id".iam.gserviceaccount.com" --format="value(uniqueId)"
 
-    if [[ "$status_code" == "200" ]]; then
-        echo "Download template complete for $project_name" | tee -a "$log_file"
-        mkdir -p "$project_id"
-        output_file="$project_id/v1-cloud-project-gcp.tf"
-        echo "$response_body" > "$output_file" 2>>"$error_log_file"
-
-        cd "$project_id" || { echo "Error: can't move to directory $project_id" | tee -a "$log_file"; return 1; }
-        export GOOGLE_CLOUD_PROJECT=$project_id
-        terraform init >>"$log_file" 2>>"$error_log_file"
-        terraform $action -auto-approve >>"$log_file" 2>>"$error_log_file"
-
-        if [[ "$action" == "apply" ]]; then
-            verify_and_add_to_vision_one "$project_id" "$api_key" "$v1_account_id" "$trend_micro_api_url" "$log_file" "$error_log_file"
-        fi
-
-        cd - > /dev/null
+    if [[ "$status_code" == "201" ]]; then
+        echo "Account registration VisionOne complete: $project_id"
     else
-        echo "Fail" | tee -a "$log_file"
-        echo "Error: $response_body" >> "$error_log_file"
+        error_code=$(echo "$response_body" | jq -r '.error.innererror.code')
+        if [[ "$error_code" == "account-exist" ]]; then
+            echo "The account $project_id already exists for this GCP project in Vision One"
+        else
+            echo "Unexpected error response: $response_body"
+        fi
     fi
-    
-    rm -rf $project_id
 }
 
-export -f process_project # Exportar la función para que esté disponible para xargs
-script_dir=$(dirname "$(readlink -f "$0")")
+project_integrated(){
+    project_id=$1
+    v1_account_id=$2
+    api_key=$3
+    trend_micro_api_url="https://api.xdr.trendmicro.com/beta/cam"
+    project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
+    response=$(curl -s -w "\n%{http_code}" -X GET \
+        -H "Authorization: Bearer $api_key" \
+        -H "Content-Type: application/json" \
+        -H "x-user-role: Master Administrator" \
+        -H "x-customer-id: $v1_account_id" \
+        "$trend_micro_api_url/gcpProjects/$project_number")
 
-action=${1:-apply} #define action to execute the terraform, default action apply
+    if [[ $(echo "$response" | tail -n1) != "200" ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
 
-if [ "$action" != "apply" ] && [ "$action" != "destroy" ]; then
-    echo "Error: Invalide action. Use 'apply' or 'destroy'." >&2
-    exit 1
-fi
-log_file="$script_dir/execution_log.txt"
+export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis  # Exportar la funciÃƒÂ³n para que xargs pueda usarla
 
-gcloud projects list --format="csv(projectId, name)" >> "$log_file"
-
-# Listar todos los proyectos en GCP
 gcloud projects list --format="csv(projectId, name)" | tail -n +2 |
-xargs -P 10 -d '\n' -I {} bash -c 'process_project "$@" "$1" "$2"'  _ {} "$action" "$script_dir"
-
-echo "Script execution completed" | tee -a "$log_file"
+xargs -P 10 -d '\n' -I {} bash -c 'process_project "$@" "$1"'  _ {} $v1_account_id $api_key $VISION_ONE_ENDPOINT
