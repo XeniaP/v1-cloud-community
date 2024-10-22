@@ -120,13 +120,13 @@ sa_binding(){
     gcloud iam service-accounts add-iam-policy-binding "$serviceAccount" \
         --role="roles/iam.workloadIdentityUser" \
         --member="principal://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/v1-workload-identity-pool-$suffix/subject/$subject" \
-        --project $project_id > /dev/null
+        --project $project_id --condition=None > /dev/null
     gcloud projects add-iam-policy-binding $project_id \
         --member="serviceAccount:$serviceAccount" \
-        --role="roles/viewer" > /dev/null
+        --role="roles/viewer" --condition=None > /dev/null
     gcloud projects add-iam-policy-binding $project_id \
         --member="serviceAccount:$serviceAccount" \
-        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" > /dev/null
+        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" --condition=None > /dev/null
 }
 
 integrate_project(){
@@ -148,6 +148,7 @@ integrate_project(){
 }
 EOF
 )
+    
     response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Authorization: Bearer $api_key" \
         -H "Content-Type: application/json" \
@@ -158,6 +159,9 @@ EOF
 
     status_code=$(echo "$response" | tail -n1)
     response_body=$(echo "$response" | sed '$d')
+
+    echo "$project_id , $project_number , $service_account_id , $workload_pool_id"
+    echo $status_code
 
     if [[ "$status_code" == "201" ]]; then
         echo "Account registration VisionOne complete: $project_id"
@@ -192,6 +196,8 @@ project_integrated(){
 }
 
 export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis  # Exportar la funciÃƒÂ³n para que xargs pueda usarla
+
+echo gcloud projects list --format="csv(projectId, name)"
 
 gcloud projects list --format="csv(projectId, name)" | tail -n +2 |
 xargs -P 10 -d '\n' -I {} bash -c 'process_project "$@" "$1"'  _ {} $v1_account_id $api_key $VISION_ONE_ENDPOINT
