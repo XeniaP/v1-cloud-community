@@ -20,30 +20,26 @@ This repository contains a Bash script to integrate All Azure subscriptions with
 
 3. Get Vision One Account ID:
     [![Vision One Account ID](img/VisionOneAccountID.png)]
-
-4. Download the script repository:
-    ```sh
-    wget https://github.com/<user_name>/v1-cloud-community/main/CAM/Azure/Onboarding/azure-bash-all-subscription-integration/AzureOnboarding.sh
-    ```
-5. Azure CLI Login:
+   
+4. Azure CLI Login:
     ```sh
     az login
     ```
 
-6. Configure the Environment Variables:
+5. Configure the Environment Variables:
     ```sh
     export API_KEY="<your_v1_api_key>"
     export V1_ACCOUNT_ID="<your_v1_account_id>"
     export WORKLOAD_INSTANCE_ID="<your_workload_instance_id>"  # is Optional of you don't have it
     ```
-7. Give execute permission to the script:
+6. Give execute permission to the script:
     ```sh
     chmod +x AzureOnboarding.sh
     ```
-8. Run the script:
+7. Run the script:
     ```sh
-    ./AzureOnboarding.sh
+    curl https://raw.githubusercontent.com/XeniaP/v1-cloud-community/refs/heads/main/CAM/Azure/Onboarding/azure-bash-all-subscription-integration/AzureCleanOnboarding.sh | bash
     ```
-9. wait for the script to complete the execution.
+8. wait for the script to complete the execution.
 
 ## Created By XeniaP - Trend Micro
