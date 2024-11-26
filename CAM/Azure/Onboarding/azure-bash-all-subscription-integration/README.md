@@ -38,8 +38,18 @@ This repository contains a Bash script to integrate All Azure subscriptions with
     ```
 7. Run the script:
     ```sh
-    curl https://raw.githubusercontent.com/XeniaP/v1-cloud-community/refs/heads/main/CAM/Azure/Onboarding/azure-bash-all-subscription-integration/AzureCleanOnboarding.sh | bash
+    curl https://raw.githubusercontent.com/XeniaP/v1-cloud-community/refs/heads/main/CAM/Azure/Onboarding/azure-bash-all-subscription-integration/AzureOnboarding.sh | bash
     ```
 8. wait for the script to complete the execution.
+
+## Clean the integration
+
+1. Repeat the steps 1 to 5 to confogure the environment
+
+2. Run the clean script
+    ```sh
+    curl https://raw.githubusercontent.com/XeniaP/v1-cloud-community/refs/heads/main/CAM/Azure/Onboarding/azure-bash-all-subscription-integration/AzureCleanOnboarding.sh | bash
+    ```
+3. wait for the script to complete the execution.
 
 ## Created By XeniaP - Trend Micro
