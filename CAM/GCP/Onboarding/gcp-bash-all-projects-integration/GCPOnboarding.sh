@@ -21,7 +21,7 @@ process_project() {
     return
   fi
   gcloud config set project $project_id
-  enable_apis $project_id
+  #enable_apis $project_id
   check_workload_pool "$project_id" "$2" "$3" "$4"
 }
 
