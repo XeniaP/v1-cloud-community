@@ -84,7 +84,7 @@ create_role(){
         --project $1 \
         --title "Vision One CAM Features role" \
         --description "The custom role for Vision One" \
-        --permissions="iam.serviceAccounts.getAccessToken,iam.roles.get,iam.roles.list,resourcemanager.tagKeys.get,resourcemanager.tagKeys.list,resourcemanager.tagValues.get,resourcemanager.tagValues.list,iam.serviceAccountKeys.create,iam.serviceAccountKeys.delete,accessapproval.settings.get,alloydb.clusters.list,alloydb.instances.list,apigateway.apiconfigs.getIamPolicy,apigateway.apiconfigs.list,apigateway.apis.get,apigateway.apis.getIamPolicy,apigateway.apis.list,apigateway.gateways.getIamPolicy,apigateway.gateways.list,apigateway.locations.get,apigee.apiproducts.list,apigee.deployments.list,apigee.envgroupattachments.list,apigee.envgroups.list,apigee.environments.getStats,apigee.instanceattachments.list,apigee.instances.list,apigee.proxies.list,apigee.proxyrevisions.get,apikeys.keys.list,artifactregistry.repositories.getIamPolicy,artifactregistry.repositories.list,bigquery.datasets.get,bigquery.tables.get,bigquery.tables.getIamPolicy,bigquery.tables.list,bigtable.clusters.list,bigtable.instances.getIamPolicy,bigtable.instances.list,certificatemanager.certs.list,cloudfunctions.functions.getIamPolicy,cloudfunctions.functions.list,cloudkms.cryptoKeys.getIamPolicy,cloudkms.cryptoKeys.list,cloudkms.keyRings.list,cloudkms.locations.list,cloudsql.instances.list,cloudsql.instances.listServerCas,compute.backendServices.getIamPolicy,compute.backendServices.list,compute.disks.getIamPolicy,compute.disks.list,compute.firewalls.list,compute.globalForwardingRules.list,compute.images.getIamPolicy,compute.images.list,compute.instanceGroups.list,compute.instances.getIamPolicy,compute.instances.list,compute.machineImages.getIamPolicy,compute.machineImages.list,compute.networks.list,compute.projects.get,compute.regionBackendServices.getIamPolicy,compute.regionBackendServices.list,compute.routers.list,compute.sslPolicies.list,compute.subnetworks.getIamPolicy,compute.subnetworks.list,compute.targetHttpsProxies.list,compute.targetSslProxies.list,compute.targetVpnGateways.list,compute.urlMaps.list,compute.vpnGateways.list,compute.zones.list,container.clusters.list,dataproc.clusters.getIamPolicy,dataproc.clusters.list,datastore.databases.list,dns.managedZones.list,dns.policies.list,file.instances.list,iam.roles.list,iam.serviceAccountKeys.list,iam.serviceAccounts.get,iam.serviceAccounts.getIamPolicy,iam.serviceAccounts.list,logging.logEntries.list,logging.logMetrics.list,logging.sinks.list,memcache.instances.list,monitoring.alertPolicies.list,networkconnectivity.hubs.list,networkconnectivity.hubs.listSpokes,notebooks.instances.getIamPolicy,notebooks.instances.list,orgpolicy.policy.get,pubsub.topics.get,pubsub.topics.getIamPolicy,pubsub.topics.list,pubsublite.topics.list,pubsublite.topics.listSubscriptions,redis.clusters.list,redis.instances.list,resourcemanager.projects.get,resourcemanager.projects.getIamPolicy,servicemanagement.services.get,serviceusage.services.list,spanner.instances.getIamPolicy,spanner.instances.list,storage.buckets.getIamPolicy,storage.buckets.list" > /dev/null
+        --permissions="iam.serviceAccounts.getAccessToken,iam.roles.get,iam.roles.list,resourcemanager.tagKeys.get,resourcemanager.tagKeys.list,resourcemanager.tagValues.get,resourcemanager.tagValues.list,iam.serviceAccountKeys.create,iam.serviceAccountKeys.delete,accessapproval.settings.get,alloydb.clusters.list,alloydb.instances.list,apigateway.apiconfigs.getIamPolicy,apigateway.apiconfigs.list,apigateway.apis.get,apigateway.apis.getIamPolicy,apigateway.apis.list,apigateway.gateways.getIamPolicy,apigateway.gateways.list,apigateway.locations.get,apigee.apiproducts.list,apigee.deployments.list,apigee.envgroupattachments.list,apigee.envgroups.list,apigee.environments.getStats,apigee.instanceattachments.list,apigee.instances.list,apigee.proxies.list,apigee.proxyrevisions.get,apikeys.keys.list,artifactregistry.repositories.getIamPolicy,artifactregistry.repositories.list,bigquery.datasets.get,bigquery.tables.get,bigquery.tables.getIamPolicy,bigquery.tables.list,bigtable.clusters.list,bigtable.instances.getIamPolicy,bigtable.instances.list,certificatemanager.certs.list,cloudfunctions.functions.getIamPolicy,cloudfunctions.functions.list,cloudkms.cryptoKeys.getIamPolicy,cloudkms.cryptoKeys.list,cloudkms.keyRings.list,cloudkms.locations.list,cloudsql.instances.list,cloudsql.instances.listServerCas,compute.backendServices.getIamPolicy,compute.backendServices.list,compute.disks.getIamPolicy,compute.disks.list,compute.firewalls.list,compute.globalForwardingRules.list,compute.images.getIamPolicy,compute.images.list,compute.instanceGroups.list,compute.instances.getIamPolicy,compute.instances.list,compute.machineImages.getIamPolicy,compute.machineImages.list,compute.networks.list,compute.projects.get,compute.regionBackendServices.getIamPolicy,compute.regionBackendServices.list,compute.routers.list,compute.sslPolicies.list,compute.subnetworks.getIamPolicy,compute.subnetworks.list,compute.targetHttpsProxies.list,compute.targetSslProxies.list,compute.targetVpnGateways.list,compute.urlMaps.list,compute.vpnGateways.list,compute.zones.list,container.clusters.list,dataproc.clusters.getIamPolicy,dataproc.clusters.list,datastore.databases.list,dns.managedZones.list,dns.policies.list,file.instances.list,iam.roles.list,iam.serviceAccountKeys.list,iam.serviceAccounts.get,iam.serviceAccounts.getIamPolicy,iam.serviceAccounts.list,logging.logEntries.list,logging.logMetrics.list,logging.sinks.list,memcache.instances.list,monitoring.alertPolicies.list,networkconnectivity.hubs.list,networkconnectivity.hubs.listSpokes,notebooks.instances.getIamPolicy,notebooks.instances.list,orgpolicy.policy.get,pubsub.topics.get,pubsub.topics.getIamPolicy,pubsub.topics.list,pubsublite.topics.list,pubsublite.topics.listSubscriptions,redis.clusters.list,redis.instances.list,resourcemanager.projects.get,resourcemanager.projects.getIamPolicy,servicemanagement.services.get,serviceusage.services.list,spanner.instances.getIamPolicy,spanner.instances.list,storage.buckets.getIamPolicy,storage.buckets.list" --quiet > /dev/null
 }
 
 create_service_account(){
@@ -95,14 +95,15 @@ create_service_account(){
     else
         gcloud iam service-accounts create vision-one-service-account \
             --display-name="The Service Account Trend Micro Vision One will impersonate" \
-            --project=$project_id
+            --project=$project_id \
+            --quiet
     fi
 }
 
 create_workload_pool(){
     project_id="$1"
     workload_pool_id="v1-workload-identity-pool-$2"
-    gcloud iam workload-identity-pools create "$workload_pool_id" --display-name "V1 Workload Identity Pool" --description "The Workload Identity Pool containing Trend Micro Vision One OIDC configuration" --project $project_id --location="global"
+    gcloud iam workload-identity-pools create "$workload_pool_id" --display-name "V1 Workload Identity Pool" --description "The Workload Identity Pool containing Trend Micro Vision One OIDC configuration" --project $project_id --location="global" --quiet
 }
 
 create_oidc(){
@@ -119,7 +120,8 @@ create_oidc(){
         --issuer-uri=$issuer \
         --allowed-audiences="//iam.googleapis.com/projects/$projectNumber/locations/global/workloadIdentityPools/$workload_pool_id/providers/vision-one-oidc-provider" \
         --attribute-mapping="google.subject=assertion.sub" \
-        --project=$project_id
+        --project=$project_id \
+        --quiet
 }
 
 sa_binding(){
@@ -132,13 +134,13 @@ sa_binding(){
     gcloud iam service-accounts add-iam-policy-binding "$serviceAccount" \
         --role="roles/iam.workloadIdentityUser" \
         --member="principal://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/v1-workload-identity-pool-$suffix/subject/$subject" \
-        --project $project_id --condition=None > /dev/null
+        --project $project_id --quiet --condition=None > /dev/null
     gcloud projects add-iam-policy-binding $project_id \
         --member="serviceAccount:$serviceAccount" \
-        --role="roles/viewer" --condition=None > /dev/null
+        --role="roles/viewer" --quiet --condition=None > /dev/null
     gcloud projects add-iam-policy-binding $project_id \
         --member="serviceAccount:$serviceAccount" \
-        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" --condition=None > /dev/null
+        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" --quiet --condition=None > /dev/null
 }
 
 integrate_project(){
