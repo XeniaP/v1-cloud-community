@@ -22,7 +22,6 @@ process_project() {
   fi
   gcloud config set project $project_id
   #enable_apis $project_id
-  disable_apis $project_id
   check_workload_pool "$project_id" "$2" "$3" "$4"
 }
 
@@ -65,18 +64,6 @@ enable_apis(){
     gcloud services enable cloudfunctions.googleapis.com --project=$1
     #gcloud services enable pubsub.googleapis.com --project=$1
     gcloud services enable secretmanager.googleapis.com --project=$1
-}
-
-disable_apis(){
-    gcloud config set project $1
-    gcloud services disable iamcredentials.googleapis.com --project=$1
-    gcloud services disable cloudresourcemanager.googleapis.com --project=$1
-    gcloud services disable iam.googleapis.com --project=$1
-    gcloud services disable cloudbuild.googleapis.com --project=$1
-    gcloud services disable deploymentmanager.googleapis.com --project=$1
-    gcloud services disable cloudfunctions.googleapis.com --project=$1
-    gcloud services disable pubsub.googleapis.com --project=$1
-    gcloud services disable secretmanager.googleapis.com --project=$1
 }
 
 create_role(){
@@ -209,7 +196,7 @@ project_integrated(){
     fi
 }
 
-export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool disable_apis
+export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool
 
 #echo gcloud projects list --format="csv(projectId, name)"
 gcloud projects list --format="csv(projectId, name)" | tail -n +2 |
