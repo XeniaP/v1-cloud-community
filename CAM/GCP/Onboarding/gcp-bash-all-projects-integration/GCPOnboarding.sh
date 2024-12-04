@@ -66,6 +66,18 @@ enable_apis(){
     gcloud services enable secretmanager.googleapis.com --project=$1
 }
 
+disable_apis(){
+    gcloud config set project $1
+    gcloud services disable iamcredentials.googleapis.com --project=$1
+    gcloud services disable cloudresourcemanager.googleapis.com --project=$1
+    gcloud services disable iam.googleapis.com --project=$1
+    gcloud services disable cloudbuild.googleapis.com --project=$1
+    gcloud services disable deploymentmanager.googleapis.com --project=$1
+    gcloud services disable cloudfunctions.googleapis.com --project=$1
+    gcloud services disable pubsub.googleapis.com --project=$1
+    gcloud services disable secretmanager.googleapis.com --project=$1
+}
+
 create_role(){
     gcloud config set project $1
     gcloud iam roles create "vision_one_cam_role_$2" \
