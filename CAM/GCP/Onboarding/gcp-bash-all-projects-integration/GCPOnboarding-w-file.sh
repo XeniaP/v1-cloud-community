@@ -74,7 +74,6 @@ enable_apis(){
     gcloud services enable cloudbuild.googleapis.com --project=$1
     gcloud services enable deploymentmanager.googleapis.com --project=$1
     gcloud services enable cloudfunctions.googleapis.com --project=$1
-    gcloud services enable pubsub.googleapis.com --project=$1
     gcloud services enable secretmanager.googleapis.com --project=$1
 }
 
