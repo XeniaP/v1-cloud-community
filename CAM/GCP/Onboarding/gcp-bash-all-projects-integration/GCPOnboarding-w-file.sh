@@ -79,6 +79,7 @@ enable_apis(){
 }
 
 create_role(){
+    echo "Create Roles"
     gcloud config set project $1
     gcloud iam roles create "vision_one_cam_role_$2" \
         --project $1 \
