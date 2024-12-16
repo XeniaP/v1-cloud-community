@@ -21,7 +21,7 @@ process_project() {
     return
   fi
   gcloud config set project $project_id
-  #enable_apis $project_id
+  enable_apis $project_id
   check_workload_pool "$project_id" "$2" "$3" "$4"
 }
 
@@ -196,7 +196,7 @@ project_integrated(){
     fi
 }
 
-export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool
+export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis
 
 #echo gcloud projects list --format="csv(projectId, name)"
 gcloud projects list --format="csv(projectId, name)" | tail -n +2 |
