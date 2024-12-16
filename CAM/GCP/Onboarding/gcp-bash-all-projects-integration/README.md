@@ -21,11 +21,7 @@ This repository contains a Bash script to integrate All GCP projects with Trend 
 3. Get Vision One Account ID:
     [![Vision One Account ID](../../../../CAM/Azure/Onboarding/azure-bash-all-subscription-integration/img/VisionOneAccountID.png)]
 
-4. Download the script repository:
-    ```sh
-    wget https://github.com/<user_name>/v1-cloud-community/main/CAM/GCP/Onboarding/gcp-bash-all-projects-integration/GCPOnboarding.sh
-    ```
-5. Azure CLI Login:
+4. Azure CLI Login:
     ```sh
     gcloud auth login
     ```
@@ -36,17 +32,13 @@ This repository contains a Bash script to integrate All GCP projects with Trend 
     export API_KEY="<API_KEY>"
     export V1_ACCOUNT_ID="<V1_ACCOUNT_ID>"
     ```
-7. Give execute permission to the script:
+7. Run the script:
     ```sh
-    chmod +x GCPOnboarding.sh
+    curl https://raw.githubusercontent.com/XeniaP/v1-cloud-community/refs/heads/main/CAM/GCP/Onboarding/gcp-bash-all-projects-integration/GCPOnboarding.sh | bash
     ```
-8. Run the script:
-    ```sh
-    ./GCPOnboarding.sh
-    ```
-9. wait for the script to complete the execution.
-10. Verify the accounts in Vision One
-11. Clean the Environment Variables
+8. wait for the script to complete the execution.
+9. Verify the accounts in Vision One
+10. Clean the Environment Variables
     ```
     export API_KEY=""
     export V1_ACCOUNT_ID=""
