@@ -32,19 +32,15 @@ This repository contains a Bash script to integrate All Azure subscriptions with
     export V1_ACCOUNT_ID="<your_v1_account_id>"
     export WORKLOAD_INSTANCE_ID="<your_workload_instance_id>"  # is Optional of you don't have it
     ```
-6. Give execute permission to the script:
-    ```sh
-    chmod +x AzureOnboarding.sh
-    ```
-7. Run the script:
+6. Run the script:
     ```sh
     curl https://raw.githubusercontent.com/XeniaP/v1-cloud-community/refs/heads/main/CAM/Azure/Onboarding/azure-bash-all-subscription-integration/AzureOnboarding.sh | bash
     ```
-8. wait for the script to complete the execution.
+7. wait for the script to complete the execution.
 
 ## Clean the integration
 
-1. Repeat the steps 1 to 5 to confogure the environment
+1. Repeat the steps 1 to 5 to configure the environment
 
 2. Run the clean script
     ```sh
