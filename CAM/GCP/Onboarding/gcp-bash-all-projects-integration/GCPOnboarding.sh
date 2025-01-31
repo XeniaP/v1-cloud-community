@@ -198,7 +198,7 @@ project_integrated(){
         -H "x-customer-id: $v1_account_id" \
         "$trend_micro_api_url/gcpProjects/$project_number")
 
-    echo "$project_id, $v1_account_id, $api_key"
+    echo "ASDASDASDASDASDASDA - $project_id, $v1_account_id, $api_key"
     if [[ $(echo "$response" | tail -n1) != "200" ]]; then
         return 1
     else
