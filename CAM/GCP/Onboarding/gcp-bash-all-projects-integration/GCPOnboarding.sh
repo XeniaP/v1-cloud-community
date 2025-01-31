@@ -13,7 +13,8 @@ workload_instance_id="${WORKLOAD_INSTANCE_ID}"
 PROJECTS=($(gcloud projects list --filter="lifecycleState=ACTIVE" --format="value(projectId)"))
 
 process_project() {
-  log_file="integration_log.txt"  # Archivo donde se guardarán los logs
+  log_file="integration_log.txt"
+  [[ ! -f "$log_file" ]] && touch "$log_file"
   project_info="$1"
   project_id=$(echo "$project_info" | cut -d',' -f1)
   project_name=$(echo "$project_info" | cut -d',' -f2)
@@ -144,6 +145,7 @@ sa_binding(){
 
 integrate_project(){
     log_file="integration_log.txt"
+    [[ ! -f "$log_file" ]] && touch "$log_file"
     http_endpoint="https://api.xdr.trendmicro.com/beta/cam"
     add_account_url="$http_endpoint/gcpProjects"
     project_id=$1
@@ -189,6 +191,7 @@ EOF
 
 project_integrated(){
     log_file="integration_log.txt"
+    [[ ! -f "$log_file" ]] && touch "$log_file"
     project_id=$1
     trend_micro_api_url="https://api.xdr.trendmicro.com/beta/cam"
     project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
@@ -203,6 +206,9 @@ project_integrated(){
 }
 
 export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis
+
+log_file="integration_log.txt"
+[[ ! -f "$log_file" ]] && touch "$log_file"
 
 #echo gcloud projects list --format="csv(projectId, name)"
 gcloud projects list --format="csv(projectId, name)" | tail -n +2 |
