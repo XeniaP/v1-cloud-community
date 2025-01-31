@@ -24,7 +24,7 @@ process_project() {
     return
   fi
   projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
-  if [[ $(project_integrated "$project_id" "$2") == 1 ]]; then
+  if [[ $(project_integrated "$project_id") ]]; then
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
     { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
     return
@@ -187,22 +187,20 @@ EOF
 project_integrated(){
     echo "integration ---------------------"
     project_id=$1
-    v1_account_id=$2
     trend_micro_api_url="https://api.xdr.trendmicro.com/beta/cam"
     project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
     response=$(curl -s -w "\n%{http_code}" -X GET \
         -H "Authorization: Bearer $API_KEY" \
         -H "Content-Type: application/json" \
         -H "x-user-role: Master Administrator" \
-        -H "x-customer-id: $v1_account_id" \
+        -H "x-customer-id: $V1_ACCOUNT_ID" \
         "$trend_micro_api_url/gcpProjects/$project_number")
 
     echo "ASDASDASDASDASDASDA - $project_id, $v1_account_id, $API_KEY"
     if [[ $(echo "$response" | tail -n1) != "200" ]]; then
-        return 1
-    else
-        return 0
+        return true
     fi
+    return false
 }
 
 export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis
