@@ -186,6 +186,7 @@ EOF
 }
 
 project_integrated(){
+    log_file="integration_log.txt"
     project_id=$1
     trend_micro_api_url="https://api.xdr.trendmicro.com/beta/cam"
     project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
@@ -196,6 +197,8 @@ project_integrated(){
         -H "x-customer-id: $V1_ACCOUNT_ID" \
         "$trend_micro_api_url/gcpProjects/$project_number")
 
+    echo "$response" | tee -a "$log_file"
+    
     if [[ $(echo "$response" | tail -n1) != "200" ]]; then
         return 1
     fi
