@@ -25,6 +25,7 @@ process_project() {
   fi
   projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
   if [[ $(project_integrated "$project_id" "$2" "$3") == 1 ]]; then
+    echo "$project_id" "$2" "$3"
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
     { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
     return
