@@ -21,19 +21,19 @@ process_project() {
   if [[ "$billing_status" != "True" ]]; then
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
     { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
+    projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+    if [[ $(project_integrated "$project_id") == 200 ]]; then
+      log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
+      { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
+      return
+    else
+      gcloud config set project "$project_id" | tee -a "$log_file"
+      enable_apis "$project_id" | tee -a "$log_file"
+      check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
+    fi
   else
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
     { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
-  fi
-  projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
-  if [[ $(project_integrated "$project_id") == 200 ]]; then
-    log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
-    { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
-    return
-  else
-    gcloud config set project "$project_id" | tee -a "$log_file"
-    enable_apis "$project_id" | tee -a "$log_file"
-    check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
   fi
 }
 
