@@ -17,8 +17,6 @@ process_project() {
   project_info="$1"
   project_id=$(echo "$project_info" | cut -d',' -f1)
   project_name=$(echo "$project_info" | cut -d',' -f2)
-  echo "$2" | tee -a "$log_file"
-  echo "$3" | tee -a "$log_file"
   billing_status=$(gcloud beta billing projects describe "$project_id" --format="value(billingEnabled)")
   if [[ "$billing_status" != "True" ]]; then
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
@@ -26,8 +24,7 @@ process_project() {
     return
   fi
   projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
-  if [[ $(project_integrated "$project_id" "$2" "$3") == 1 ]]; then
-    echo "$project_id" "$2" "$3"
+  if [[ $(project_integrated "$project_id" "$2") == 1 ]]; then
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
     { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
     return
@@ -190,17 +187,16 @@ EOF
 project_integrated(){
     project_id=$1
     v1_account_id=$2
-    api_key=$3
     trend_micro_api_url="https://api.xdr.trendmicro.com/beta/cam"
     project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
     response=$(curl -s -w "\n%{http_code}" -X GET \
-        -H "Authorization: Bearer $api_key" \
+        -H "Authorization: Bearer $API_KEY" \
         -H "Content-Type: application/json" \
         -H "x-user-role: Master Administrator" \
         -H "x-customer-id: $v1_account_id" \
         "$trend_micro_api_url/gcpProjects/$project_number")
 
-    echo "ASDASDASDASDASDASDA - $project_id, $v1_account_id, $api_key"
+    echo "ASDASDASDASDASDASDA - $project_id, $v1_account_id, $API_KEY"
     if [[ $(echo "$response" | tail -n1) != "200" ]]; then
         return 1
     else
