@@ -19,13 +19,11 @@ process_project() {
   project_name=$(echo "$project_info" | cut -d',' -f2)
   billing_status=$(gcloud beta billing projects describe "$project_id" --format="value(billingEnabled)")
   log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
-  # Insertar en la primera línea del archivo
   { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
   if [[ "$billing_status" != "True" ]]; then
     echo "Billing is NOT enabled for project: $project_id ($project_name)" | tee -a "$log_file"
     return
   fi
-  echo "Processing project: $project_id ($project_name) - Billing Enabled" | tee -a "$log_file"
   projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
   if [[ $(project_integrated "$project_id" "$2" "$3") == 1 ]]; then
     echo "Project already integrated: $project_id ($project_name)" | tee -a "$log_file"
@@ -172,16 +170,16 @@ EOF
     status_code=$(echo "$response" | tail -n1)
     response_body=$(echo "$response" | sed '$d')
 
-    echo "$project_id , $project_number , $service_account_id , $workload_pool_id, $status_code" | tee -a "$log_file"
-
     if [[ "$status_code" == "201" ]]; then
         echo "Account registration VisionOne complete: $project_id"
+        echo "$project_id , $project_number , $service_account_id , $workload_pool_id, SUCCESS" | tee -a "$log_file"
     else
-        error_code=$(echo "$response_body" | jq -r '.error.innererror.code')
+        #error_code=$(echo "$response_body" | jq -r '.error.innererror.code')
         if [[ "$error_code" == "account-exist" ]]; then
-            echo "The account $project_id already exists for this GCP project in Vision One"
+            echo "$project_id , $project_number , $service_account_id , $workload_pool_id, SUCCESS" | tee -a "$log_file"
         else
-            echo "Unexpected error response: $response_body"
+            #echo "Unexpected error response: $response_body"
+            echo "$project_id , $project_number , $service_account_id , $workload_pool_id, $status_code-$error_code" | tee -a "$log_file"
         fi
     fi
 }
