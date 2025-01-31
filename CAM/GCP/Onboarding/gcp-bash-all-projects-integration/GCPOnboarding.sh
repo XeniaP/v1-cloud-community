@@ -13,17 +13,26 @@ workload_instance_id="${WORKLOAD_INSTANCE_ID}"
 PROJECTS=($(gcloud projects list --filter="lifecycleState=ACTIVE" --format="value(projectId)"))
 
 process_project() {
+  log_file="integration_log.txt"  # Archivo donde se guardarán los logs
   project_info="$1"
   project_id=$(echo "$project_info" | cut -d',' -f1)
   project_name=$(echo "$project_info" | cut -d',' -f2)
-  projectNumber=$(gcloud projects describe $project_id --format="value(projectNumber)")
-  if [[ $(project_integrated "$project_id" "$2" "$3") == 1 ]]; then
+  billing_status=$(gcloud beta billing projects describe "$project_id" --format="value(billingEnabled)")
+  if [[ "$billing_status" != "True" ]]; then
+    echo "Billing is NOT enabled for project: $project_id ($project_name)" | tee -a "$log_file"
     return
   fi
-  gcloud config set project $project_id
-  enable_apis $project_id
-  check_workload_pool "$project_id" "$2" "$3" "$4"
+  echo "Processing project: $project_id ($project_name) - Billing Enabled" | tee -a "$log_file"
+  projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+  if [[ $(project_integrated "$project_id" "$2" "$3") == 1 ]]; then
+    echo "Project already integrated: $project_id ($project_name)" | tee -a "$log_file"
+    return
+  fi
+  gcloud config set project "$project_id" | tee -a "$log_file"
+  enable_apis "$project_id" | tee -a "$log_file"
+  check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
 }
+
 
 check_workload_pool(){
     PROJECT_ID=$1
@@ -130,6 +139,7 @@ sa_binding(){
 }
 
 integrate_project(){
+    log_file="integration_log.txt"
     http_endpoint="https://api.xdr.trendmicro.com/beta/cam"
     add_account_url="$http_endpoint/gcpProjects"
     project_id=$1
@@ -148,8 +158,6 @@ integrate_project(){
 }
 EOF
 )
-
-    echo "$json_body"
     response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Authorization: Bearer $api_key" \
         -H "Content-Type: application/json" \
@@ -161,8 +169,7 @@ EOF
     status_code=$(echo "$response" | tail -n1)
     response_body=$(echo "$response" | sed '$d')
 
-    echo "$project_id , $project_number , $service_account_id , $workload_pool_id"
-    echo $status_code
+    echo "$project_id , $project_number , $service_account_id , $workload_pool_id, $status_code" | tee -a "$log_file"
 
     if [[ "$status_code" == "201" ]]; then
         echo "Account registration VisionOne complete: $project_id"
