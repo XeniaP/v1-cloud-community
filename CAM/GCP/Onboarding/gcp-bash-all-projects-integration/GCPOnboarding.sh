@@ -185,6 +185,7 @@ EOF
 }
 
 project_integrated(){
+    echo "integration ---------------------"
     project_id=$1
     v1_account_id=$2
     trend_micro_api_url="https://api.xdr.trendmicro.com/beta/cam"
