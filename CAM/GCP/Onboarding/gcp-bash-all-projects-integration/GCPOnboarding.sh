@@ -28,10 +28,11 @@ process_project() {
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
     { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
     return
+  else
+    gcloud config set project "$project_id" | tee -a "$log_file"
+    enable_apis "$project_id" | tee -a "$log_file"
+    check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
   fi
-  gcloud config set project "$project_id" | tee -a "$log_file"
-  enable_apis "$project_id" | tee -a "$log_file"
-  check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
 }
 
 
@@ -185,7 +186,6 @@ EOF
 }
 
 project_integrated(){
-    echo "integration ---------------------"
     project_id=$1
     trend_micro_api_url="https://api.xdr.trendmicro.com/beta/cam"
     project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
@@ -196,7 +196,6 @@ project_integrated(){
         -H "x-customer-id: $V1_ACCOUNT_ID" \
         "$trend_micro_api_url/gcpProjects/$project_number")
 
-    echo "ASDASDASDASDASDASDA - $project_id, $v1_account_id, $API_KEY"
     if [[ $(echo "$response" | tail -n1) != "200" ]]; then
         return 1
     fi
