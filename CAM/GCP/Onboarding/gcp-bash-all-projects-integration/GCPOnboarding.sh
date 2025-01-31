@@ -18,6 +18,9 @@ process_project() {
   project_id=$(echo "$project_info" | cut -d',' -f1)
   project_name=$(echo "$project_info" | cut -d',' -f2)
   billing_status=$(gcloud beta billing projects describe "$project_id" --format="value(billingEnabled)")
+  log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
+  # Insertar en la primera línea del archivo
+  { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
   if [[ "$billing_status" != "True" ]]; then
     echo "Billing is NOT enabled for project: $project_id ($project_name)" | tee -a "$log_file"
     return
