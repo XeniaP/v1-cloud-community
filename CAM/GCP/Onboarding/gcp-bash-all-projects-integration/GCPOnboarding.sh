@@ -198,9 +198,9 @@ project_integrated(){
 
     echo "ASDASDASDASDASDASDA - $project_id, $v1_account_id, $API_KEY"
     if [[ $(echo "$response" | tail -n1) != "200" ]]; then
-        return true
+        return 1
     fi
-    return false
+    return 0
 }
 
 export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis
