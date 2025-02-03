@@ -21,27 +21,30 @@ process_project() {
   project_name=$(echo "$project_info" | cut -d',' -f2)
 
   billing_status=$(gcloud beta billing projects describe "$project_id" --format="value(billingEnabled)")
-  project_integrated "$project_id" | tee -a "$log_file"
-  if [[ "$billing_status" == "True" ]]; then
-    projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
-    
-    if [[ $(project_integrated "$project_id") == 200 ]]; then
-      log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
-      { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
-      return
-    fi
-    gcloud config set project "$project_id" | tee -a "$log_file"
-    enable_apis "$project_id" | tee -a "$log_file"
-    check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
 
-    log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - APIs Enabled & Workload Checked"
-    { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
-
-  else
+  if [[ "$billing_status" != "True" ]]; then
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Skipping project: $project_id ($project_name) - Billing NOT enabled"
     { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
+    return
   fi
+
+  # Verificar si ya está integrado en Vision One
+  if project_integrated "$project_id"; then
+    log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Skipping project: $project_id ($project_name) - Already integrated in Vision One"
+    { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
+    return
+  fi
+
+  projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+  gcloud config set project "$project_id" | tee -a "$log_file"
+
+  enable_apis "$project_id" | tee -a "$log_file"
+  check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
+
+  log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - APIs Enabled & Workload Checked"
+  { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
 }
+
 
 
 check_workload_pool(){
@@ -194,12 +197,15 @@ EOF
     fi
 }
 
-project_integrated(){
+project_integrated() {
     log_file="integration_log.txt"
     [[ ! -f "$log_file" ]] && touch "$log_file"
+
     project_id=$1
     trend_micro_api_url="https://api.xdr.trendmicro.com/beta/cam"
-    project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
+    project_number=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+
+    # Hacer la solicitud a la API de Vision One
     response=$(curl -s -w "\n%{http_code}" -X GET \
         -H "Authorization: Bearer $API_KEY" \
         -H "Content-Type: application/json" \
@@ -207,9 +213,23 @@ project_integrated(){
         -H "x-customer-id: $V1_ACCOUNT_ID" \
         "$trend_micro_api_url/gcpProjects/$project_number")
 
-    echo "$response"
-    return "$response"
+    # Extraer el código de estado HTTP
+    status_code=$(echo "$response" | tail -n1)
+    response_body=$(echo "$response" | sed '$d') # Elimina la última línea (código HTTP)
+
+    # Registrar en el log
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking integration for project: $project_id - HTTP Status: $status_code" | tee -a "$log_file"
+
+    # Validar si el proyecto ya está integrado
+    if [[ "$status_code" == "200" ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Project $project_id is already integrated in Vision One." | tee -a "$log_file"
+        return 0  # 0 significa éxito (proyecto ya integrado)
+    else
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Project $project_id is NOT integrated in Vision One. Response: $response_body" | tee -a "$log_file"
+        return 1  # 1 significa que el proyecto no está integrado
+    fi
 }
+
 
 export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis
 
