@@ -201,6 +201,7 @@ project_integrated(){
         -H "x-customer-id: $V1_ACCOUNT_ID" \
         "$trend_micro_api_url/gcpProjects/$project_number")
 
+    echo "$response"
     return "$response"
 }
 
