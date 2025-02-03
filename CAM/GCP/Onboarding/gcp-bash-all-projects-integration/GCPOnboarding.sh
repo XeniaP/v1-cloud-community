@@ -41,7 +41,7 @@ process_project() {
   enable_apis "$project_id" | tee -a "$log_file"
   check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
 
-  log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - APIs Enabled & Workload Checked"
+  log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
   { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
 }
 
