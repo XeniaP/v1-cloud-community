@@ -21,7 +21,7 @@ process_project() {
   project_name=$(echo "$project_info" | cut -d',' -f2)
 
   billing_status=$(gcloud beta billing projects describe "$project_id" --format="value(billingEnabled)")
-
+  project_integrated "$project_id" | tee -a "$log_file"
   if [[ "$billing_status" == "True" ]]; then
     projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
     
