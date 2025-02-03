@@ -9,8 +9,8 @@ VISION_ONE_ENDPOINT="https://cloudaccounts-us.xdr.trendmicro.com/beta/cam/gcpPro
 api_key="${API_KEY}"
 v1_account_id="${V1_ACCOUNT_ID}"
 workload_instance_id="${WORKLOAD_INSTANCE_ID}"
-
-PROJECTS=($(gcloud projects list --filter="lifecycleState=ACTIVE" --format="value(projectId)"))
+log_file="integration_log.txt"
+touch "$log_file"
 
 process_project() {
   log_file="integration_log.txt"
@@ -21,7 +21,6 @@ process_project() {
   billing_status=$(gcloud beta billing projects describe "$project_id" --format="value(billingEnabled)")
   if [[ "$billing_status" != "True" ]]; then
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
-    { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
     projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
     if [[ $(project_integrated "$project_id") == 200 ]]; then
       log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
@@ -34,8 +33,8 @@ process_project() {
     fi
   else
     log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
-    { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
   fi
+  { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
 }
 
 
@@ -206,9 +205,6 @@ project_integrated(){
 }
 
 export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis
-
-log_file="integration_log.txt"
-[[ ! -f "$log_file" ]] && touch "$log_file"
 
 #echo gcloud projects list --format="csv(projectId, name)"
 gcloud projects list --format="csv(projectId, name)" | tail -n +2 |
