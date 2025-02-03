@@ -218,14 +218,14 @@ project_integrated() {
     response_body=$(echo "$response" | sed '$d') # Elimina la última línea (código HTTP)
 
     # Registrar en el log
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking integration for project: $project_id - HTTP Status: $status_code" | tee -a "$log_file"
+    #echo "[$(date '+%Y-%m-%d %H:%M:%S')] Checking integration for project: $project_id - HTTP Status: $status_code" | tee -a "$log_file"
 
     # Validar si el proyecto ya está integrado
     if [[ "$status_code" == "200" ]]; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Project $project_id is already integrated in Vision One." | tee -a "$log_file"
+        #echo "[$(date '+%Y-%m-%d %H:%M:%S')] Project $project_id is already integrated in Vision One." | tee -a "$log_file"
         return 0  # 0 significa éxito (proyecto ya integrado)
     else
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Project $project_id is NOT integrated in Vision One. Response: $response_body" | tee -a "$log_file"
+        #echo "[$(date '+%Y-%m-%d %H:%M:%S')] Project $project_id is NOT integrated in Vision One. Response: $response_body" | tee -a "$log_file"
         return 1  # 1 significa que el proyecto no está integrado
     fi
 }
