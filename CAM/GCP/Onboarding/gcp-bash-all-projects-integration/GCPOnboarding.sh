@@ -15,26 +15,32 @@ touch "$log_file"
 process_project() {
   log_file="integration_log.txt"
   [[ ! -f "$log_file" ]] && touch "$log_file"
+
   project_info="$1"
   project_id=$(echo "$project_info" | cut -d',' -f1)
   project_name=$(echo "$project_info" | cut -d',' -f2)
+
   billing_status=$(gcloud beta billing projects describe "$project_id" --format="value(billingEnabled)")
-  if [[ "$billing_status" != "True" ]]; then
-    log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
+
+  if [[ "$billing_status" == "True" ]]; then
     projectNumber=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+    
     if [[ $(project_integrated "$project_id") == 200 ]]; then
       log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - V1 Integrated: YES"
       { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
       return
-    else
-      gcloud config set project "$project_id" | tee -a "$log_file"
-      enable_apis "$project_id" | tee -a "$log_file"
-      check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
     fi
+    gcloud config set project "$project_id" | tee -a "$log_file"
+    enable_apis "$project_id" | tee -a "$log_file"
+    check_workload_pool "$project_id" "$2" "$3" "$4" | tee -a "$log_file"
+
+    log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status - APIs Enabled & Workload Checked"
+    { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
+
   else
-    log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Processing project: $project_id ($project_name) - Billing Enabled: $billing_status"
+    log_entry="[$(date '+%Y-%m-%d %H:%M:%S')] Skipping project: $project_id ($project_name) - Billing NOT enabled"
+    { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
   fi
-  { echo "$log_entry"; cat "$log_file"; } > temp_log && mv temp_log "$log_file"
 }
 
 
