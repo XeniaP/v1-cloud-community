@@ -5,9 +5,9 @@ resources:
 - repo: self
 
 variables:
-  repository: 'xniapdev/django-app'
+  repository: '' # Set this to your Docker repository, e.g., 'mydockerhub/myimage'
   tag: '$(Build.BuildId)'
-  imageName: 'django-app'
+  imageName: '' # Set this to your image name, e.g., 'myimage'
 
 stages:
 - stage: Build
@@ -47,14 +47,3 @@ stages:
         script: ./tmas-cli/tmas scan docker-archive:image.tar -VMS --saveSBOM > result.json
       env:
         TMAS_API_KEY: $(TMAS_API_KEY)
-    - script: |
-        git clone https://github.com/XeniaP/CS-ArtifactScanner-Report.git
-        pip install -r ./CS-ArtifactScanner-Report/requirements.txt
-        python ./CS-ArtifactScanner-Report/export_report_tmas.py $(imageName) --resultFile ./result.json
-        FILE=$(ls *.xlsx | head -n 1)
-        echo "##vso[task.setvariable variable=excelFileName]$FILE"
-      displayName: Create Excel Report with Vulnerabilities
-    - task: PublishPipelineArtifact@1
-      inputs:
-        targetPath: '$(System.DefaultWorkingDirectory)/$(excelFileName)'
-        publishLocation: 'pipeline'
