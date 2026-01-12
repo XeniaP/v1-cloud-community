@@ -17,6 +17,7 @@ process_subscription() {
     app_registration_name="v1-app-registration-${subscription_id}"
     federated_cred_name="v1-fed-cred"
     role_name="v1-custom-role-${subscription_id}"
+    rg_name="trendmicro-v1-${subscription_id}" 
     progress=()
 
     az account set --subscription "$subscription_id" > /dev/null 2>&1
@@ -54,6 +55,37 @@ process_subscription() {
         progress+=("Completed")
     else
         progress+=("NotExist")
+    fi
+
+    rg_exists=$(az group exists -n "$rg_name" 2>/dev/null)
+
+    if [[ "$rg_exists" == "true" ]]; then
+    # elimina locks que podrían bloquear la eliminación
+    mapfile -t lock_ids < <(az lock list -g "$rg_name" --query "[].id" -o tsv 2>/dev/null)
+    if (( ${#lock_ids[@]} > 0 )); then
+        for id in "${lock_ids[@]}"; do
+        az lock delete --ids "$id" >/dev/null 2>&1 || true
+        done
+    fi
+
+    # opcional: forzar tipos “difíciles” (VMs, VMSS, etc.)
+    # export FORCE_TYPES="Microsoft.Compute/virtualMachines,Microsoft.Compute/virtualMachineScaleSets"
+    if [[ -n "${FORCE_TYPES:-}" ]]; then
+        az group delete -n "$rg_name" --yes --no-wait \
+        --force-deletion-types "$FORCE_TYPES" >/dev/null 2>&1 || del_rc=$?
+    else
+        az group delete -n "$rg_name" --yes --no-wait >/dev/null 2>&1 || del_rc=$?
+    fi
+
+    if [[ ${del_rc:-0} -ne 0 ]]; then
+        progress+=("Failed")
+    else
+        # espera a que quede realmente eliminado
+        az group wait -n "$rg_name" --deleted >/dev/null 2>&1 || true
+        progress+=("Completed")
+    fi
+    else
+    progress+=("NotExist")
     fi
 
     # Step 4: Eliminar las credenciales federadas
