@@ -111,45 +111,34 @@ create_oidc(){
 }
 
 sa_binding(){
-    local project_id="$1"
-    local suffix="$2"
-    local v1_acc_id="$3"
-    local subject="urn:visionone:identity:us:$v1_acc_id:account/$v1_acc_id"
-    local serviceAccount="vision-one-service-account@$project_id.iam.gserviceaccount.com"
-    
-    local project_number=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
-    gcloud config set project "$project_id" --quiet
-
-    echo "[+] Aplicando bindings en $project_id..."
-    
+    project_id="$1"
+    suffix="$2"
+    subject="urn:visionone:identity:us:$3:account/$3"
+    serviceAccount="vision-one-service-account@$project_id.iam.gserviceaccount.com"
+    project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
+    gcloud config set project $project_id
     gcloud iam service-accounts add-iam-policy-binding "$serviceAccount" \
         --role="roles/iam.workloadIdentityUser" \
         --member="principal://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/v1-workload-identity-pool-$suffix/subject/$subject" \
-        --project "$project_id" \
-        --condition=None --quiet > /dev/null
-
-    gcloud projects add-iam-policy-binding "$project_id" \
+        --project $project_id > /dev/null
+    gcloud projects add-iam-policy-binding $project_id \
         --member="serviceAccount:$serviceAccount" \
-        --role="roles/viewer" \
-        --condition=None --quiet > /dev/null
-
-    gcloud projects add-iam-policy-binding "$project_id" \
+        --role="roles/viewer" > /dev/null
+    gcloud projects add-iam-policy-binding $project_id \
         --member="serviceAccount:$serviceAccount" \
-        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" \
-        --condition=None --quiet > /dev/null
+        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" > /dev/null
 }
 
 integrate_project(){
-    VISION_ONE_ENDPOINT="https://api.xdr.trendmicro.com/beta/cam/gcpProjects"
-    local project_id=$1
-    local workload_pool_id="$2"
-    local v1_acc_id=$3
-    local api_key=$4
-    
-    local service_account_id=$(gcloud iam service-accounts describe vision-one-service-account@$project_id.iam.gserviceaccount.com --format="value(uniqueId)")
-    local project_number=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
-
-    local json_body=$(cat <<EOF
+    http_endpoint="https://api.xdr.trendmicro.com/beta/cam"
+    add_account_url="$http_endpoint/gcpProjects"
+    project_id=$1
+    workload_pool_id="$2"
+    service_account_id=$(gcloud iam service-accounts describe vision-one-service-account@$project_id.iam.gserviceaccount.com --format="value(uniqueId)")
+    project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
+    v1_account_id=$3
+    api_key=$4
+    json_body=$(cat <<EOF
 {
   "name": "$project_id",
   "projectNumber": "$project_number", 
@@ -159,19 +148,26 @@ integrate_project(){
 }
 EOF
 )
-    # Nota: Asegúrate de que tu API_KEY no tenga espacios y sea del tipo "Legacy" o "Standard" según tu consola
     response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Authorization: Bearer $api_key" \
         -H "Content-Type: application/json" \
-        -H "x-customer-id: $v1_acc_id" \
+        -H "x-user-role: Master Administrator" \
+        -H "x-customer-id: $v1_account_id" \
         -d "$json_body" \
-        "$VISION_ONE_ENDPOINT")
+        "$add_account_url")
 
     status_code=$(echo "$response" | tail -n1)
+    response_body=$(echo "$response" | sed '$d')
+
     if [[ "$status_code" == "201" ]]; then
-        echo "Exito: Proyecto $project_id integrado."
+        echo "Account registration VisionOne complete: $project_id"
     else
-        echo "Error en API ($status_code): $(echo "$response" | sed '$d')"
+        error_code=$(echo "$response_body" | jq -r '.error.innererror.code')
+        if [[ "$error_code" == "account-exist" ]]; then
+            echo "The account $project_id already exists for this GCP project in Vision One"
+        else
+            echo "Unexpected error response: $response_body"
+        fi
     fi
 }
 
@@ -198,4 +194,4 @@ project_integrated(){
 export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis  # Exportar la funciÃƒÂ³n para que xargs pueda usarla
 
 gcloud projects list --format="csv(projectId, name)" | tail -n +2 |
-xargs -P 100 -d '\n' -I {} bash -c 'process_project "$@" "$1"'  _ {} $v1_account_id $api_key $VISION_ONE_ENDPOINT
+xargs -P 10 -d '\n' -I {} bash -c 'process_project "$@" "$1"'  _ {} $v1_account_id $api_key $VISION_ONE_ENDPOINT
