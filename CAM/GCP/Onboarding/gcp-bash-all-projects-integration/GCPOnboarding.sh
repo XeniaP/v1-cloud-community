@@ -202,4 +202,4 @@ project_integrated(){
 export -f project_integrated check_workload_pool process_project integrate_project create_oidc create_role create_service_account sa_binding create_workload_pool enable_apis  # Exportar la funciÃƒÂ³n para que xargs pueda usarla
 
 gcloud projects list --format="csv(projectId, name)" | tail -n +2 |
-xargs -P 10 -d '\n' -I {} bash -c 'process_project "$@" "$1"'  _ {} $v1_account_id $api_key $VISION_ONE_ENDPOINT
+xargs -P 100 -d '\n' -I {} bash -c 'process_project "$@" "$1"'  _ {} $v1_account_id $api_key $VISION_ONE_ENDPOINT
