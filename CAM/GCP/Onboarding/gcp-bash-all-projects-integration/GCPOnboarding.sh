@@ -113,24 +113,32 @@ create_oidc(){
 sa_binding(){
     project_id="$1"
     suffix="$2"
-    subject="urn:visionone:identity:us:$3:account/$3"
+    v1_acc_id="$3" # Variable clara para el ID de cuenta de Vision One
+    subject="urn:visionone:identity:us:$v1_acc_id:account/$v1_acc_id"
     serviceAccount="vision-one-service-account@$project_id.iam.gserviceaccount.com"
-    project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
     
-    gcloud config set project $project_id
+    # Obtener el número de proyecto de forma segura
+    project_number=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+    
+    gcloud config set project "$project_id"
 
-    # Agregando --condition=None para evitar el error de políticas existentes con condiciones
+    echo "Aplicando bindings para el proyecto: $project_id..."
+
+    # 1. Binding de Workload Identity (Service Account)
+    # Se agrega --condition=None para evitar el error de políticas existentes
     gcloud iam service-accounts add-iam-policy-binding "$serviceAccount" \
         --role="roles/iam.workloadIdentityUser" \
         --member="principal://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/v1-workload-identity-pool-$suffix/subject/$subject" \
         --project "$project_id" \
         --condition=None > /dev/null
 
+    # 2. Binding de Viewer a nivel de Proyecto
     gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$serviceAccount" \
         --role="roles/viewer" \
         --condition=None > /dev/null
 
+    # 3. Binding del Rol personalizado de Vision One
     gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$serviceAccount" \
         --role="projects/$project_id/roles/vision_one_cam_role_$suffix" \
