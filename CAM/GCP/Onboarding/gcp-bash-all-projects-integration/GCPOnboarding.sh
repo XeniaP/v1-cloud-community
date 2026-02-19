@@ -116,17 +116,25 @@ sa_binding(){
     subject="urn:visionone:identity:us:$3:account/$3"
     serviceAccount="vision-one-service-account@$project_id.iam.gserviceaccount.com"
     project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
+    
     gcloud config set project $project_id
+
+    # Agregando --condition=None para evitar el error de políticas existentes con condiciones
     gcloud iam service-accounts add-iam-policy-binding "$serviceAccount" \
         --role="roles/iam.workloadIdentityUser" \
         --member="principal://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/v1-workload-identity-pool-$suffix/subject/$subject" \
-        --project $project_id > /dev/null
-    gcloud projects add-iam-policy-binding $project_id \
+        --project "$project_id" \
+        --condition=None > /dev/null
+
+    gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$serviceAccount" \
-        --role="roles/viewer" > /dev/null
-    gcloud projects add-iam-policy-binding $project_id \
+        --role="roles/viewer" \
+        --condition=None > /dev/null
+
+    gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$serviceAccount" \
-        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" > /dev/null
+        --role="projects/$project_id/roles/vision_one_cam_role_$suffix" \
+        --condition=None > /dev/null
 }
 
 integrate_project(){
