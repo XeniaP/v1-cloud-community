@@ -157,10 +157,12 @@ integrate_project(){
     json_body=$(cat <<EOF
 {
   "name": "$project_id",
+  "description": "",
   "projectNumber": "$project_number", 
   "serviceAccountId": "$service_account_id",
   "workloadIdentityPoolId": "$workload_pool_id",
-  "oidcProviderId": "vision-one-oidc-provider"
+  "oidcProviderId": "vision-one-oidc-provider",
+  "isCAMCloudASRMEnabled": True
 }
 EOF
 )
