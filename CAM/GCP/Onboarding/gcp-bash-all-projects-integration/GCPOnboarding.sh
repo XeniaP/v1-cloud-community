@@ -111,81 +111,67 @@ create_oidc(){
 }
 
 sa_binding(){
-    project_id="$1"
-    suffix="$2"
-    v1_acc_id="$3" # Variable clara para el ID de cuenta de Vision One
-    subject="urn:visionone:identity:us:$v1_acc_id:account/$v1_acc_id"
-    serviceAccount="vision-one-service-account@$project_id.iam.gserviceaccount.com"
+    local project_id="$1"
+    local suffix="$2"
+    local v1_acc_id="$3"
+    local subject="urn:visionone:identity:us:$v1_acc_id:account/$v1_acc_id"
+    local serviceAccount="vision-one-service-account@$project_id.iam.gserviceaccount.com"
     
-    # Obtener el número de proyecto de forma segura
-    project_number=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+    local project_number=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+    gcloud config set project "$project_id" --quiet
+
+    echo "[+] Aplicando bindings en $project_id..."
     
-    gcloud config set project "$project_id"
-
-    echo "Aplicando bindings para el proyecto: $project_id..."
-
-    # 1. Binding de Workload Identity (Service Account)
-    # Se agrega --condition=None para evitar el error de políticas existentes
     gcloud iam service-accounts add-iam-policy-binding "$serviceAccount" \
         --role="roles/iam.workloadIdentityUser" \
         --member="principal://iam.googleapis.com/projects/$project_number/locations/global/workloadIdentityPools/v1-workload-identity-pool-$suffix/subject/$subject" \
         --project "$project_id" \
-        --condition=None > /dev/null
+        --condition=None --quiet > /dev/null
 
-    # 2. Binding de Viewer a nivel de Proyecto
     gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$serviceAccount" \
         --role="roles/viewer" \
-        --condition=None > /dev/null
+        --condition=None --quiet > /dev/null
 
-    # 3. Binding del Rol personalizado de Vision One
     gcloud projects add-iam-policy-binding "$project_id" \
         --member="serviceAccount:$serviceAccount" \
         --role="projects/$project_id/roles/vision_one_cam_role_$suffix" \
-        --condition=None > /dev/null
+        --condition=None --quiet > /dev/null
 }
 
 integrate_project(){
-    http_endpoint="https://api.xdr.trendmicro.com/beta/cam"
-    add_account_url="$http_endpoint/gcpProjects"
-    project_id=$1
-    workload_pool_id="$2"
-    service_account_id=$(gcloud iam service-accounts describe vision-one-service-account@$project_id.iam.gserviceaccount.com --format="value(uniqueId)")
-    project_number=$(gcloud projects describe $project_id --format="value(projectNumber)")
-    v1_account_id=$3
-    api_key=$4
-    json_body=$(cat <<EOF
+    VISION_ONE_ENDPOINT="https://api.xdr.trendmicro.com/beta/cam/gcpProjects"
+    local project_id=$1
+    local workload_pool_id="$2"
+    local v1_acc_id=$3
+    local api_key=$4
+    
+    local service_account_id=$(gcloud iam service-accounts describe vision-one-service-account@$project_id.iam.gserviceaccount.com --format="value(uniqueId)")
+    local project_number=$(gcloud projects describe "$project_id" --format="value(projectNumber)")
+
+    local json_body=$(cat <<EOF
 {
   "name": "$project_id",
-  "description": "",
   "projectNumber": "$project_number", 
   "serviceAccountId": "$service_account_id",
   "workloadIdentityPoolId": "$workload_pool_id",
-  "oidcProviderId": "vision-one-oidc-provider",
-  "isCAMCloudASRMEnabled": "True"
+  "oidcProviderId": "vision-one-oidc-provider"
 }
 EOF
 )
+    # Nota: Asegúrate de que tu API_KEY no tenga espacios y sea del tipo "Legacy" o "Standard" según tu consola
     response=$(curl -s -w "\n%{http_code}" -X POST \
         -H "Authorization: Bearer $api_key" \
         -H "Content-Type: application/json" \
-        -H "x-user-role: Master Administrator" \
-        -H "x-customer-id: $v1_account_id" \
+        -H "x-customer-id: $v1_acc_id" \
         -d "$json_body" \
-        "$add_account_url")
+        "$VISION_ONE_ENDPOINT")
 
     status_code=$(echo "$response" | tail -n1)
-    response_body=$(echo "$response" | sed '$d')
-
     if [[ "$status_code" == "201" ]]; then
-        echo "Account registration VisionOne complete: $project_id"
+        echo "Exito: Proyecto $project_id integrado."
     else
-        error_code=$(echo "$response_body" | jq -r '.error.innererror.code')
-        if [[ "$error_code" == "account-exist" ]]; then
-            echo "The account $project_id already exists for this GCP project in Vision One"
-        else
-            echo "Unexpected error response: $response_body"
-        fi
+        echo "Error en API ($status_code): $(echo "$response" | sed '$d')"
     fi
 }
 
