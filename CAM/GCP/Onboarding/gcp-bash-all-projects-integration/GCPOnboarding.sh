@@ -162,7 +162,7 @@ integrate_project(){
   "serviceAccountId": "$service_account_id",
   "workloadIdentityPoolId": "$workload_pool_id",
   "oidcProviderId": "vision-one-oidc-provider",
-  "isCAMCloudASRMEnabled": True
+  "isCAMCloudASRMEnabled": "True"
 }
 EOF
 )
